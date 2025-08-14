@@ -1,0 +1,94 @@
+{
+  "companies": [
+    {
+      "symbol": "CYBT",
+      "name": "サイバーテック",
+      "category": "TECHNOLOGY",
+      "description": "AI・機械学習技術のリーディング企業",
+      "volatility": "HIGH",
+      "hasDividend": false,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "DGTL",
+      "name": "デジタル工業",
+      "category": "TECHNOLOGY",
+      "description": "IoT・クラウドサービスの老舗企業",
+      "volatility": "MEDIUM",
+      "hasDividend": true,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "FOOD",
+      "name": "フードチェーン",
+      "category": "LIFESTYLE",
+      "description": "全国展開する外食チェーン",
+      "volatility": "MEDIUM",
+      "hasDividend": false,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "RETL",
+      "name": "リテール商事",
+      "category": "LIFESTYLE",
+      "description": "小売・流通業界の大手企業",
+      "volatility": "LOW",
+      "hasDividend": true,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "ENGY",
+      "name": "エナジー電力",
+      "category": "INFRASTRUCTURE",
+      "description": "再生可能エネルギー事業の先駆者",
+      "volatility": "LOW",
+      "hasDividend": true,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "MDCL",
+      "name": "メディカル製薬",
+      "category": "INFRASTRUCTURE",
+      "description": "医薬品・バイオテクノロジー企業",
+      "volatility": "HIGH",
+      "hasDividend": false,
+      "unlockLevel": 1
+    },
+    {
+      "symbol": "MTRL",
+      "name": "マテリアル工業",
+      "category": "MATERIALS",
+      "description": "建設資材・化学素材の総合メーカー",
+      "volatility": "MEDIUM",
+      "hasDividend": true,
+      "unlockLevel": 2
+    },
+    {
+      "symbol": "CHMC",
+      "name": "ケミカル化学",
+      "category": "MATERIALS",
+      "description": "特殊化学品・高機能材料の専門企業",
+      "volatility": "MEDIUM",
+      "hasDividend": false,
+      "unlockLevel": 2
+    },
+    {
+      "symbol": "ENTM",
+      "name": "エンタメ企業",
+      "category": "ENTERTAINMENT",
+      "description": "ゲーム・映像コンテンツ制作会社",
+      "volatility": "HIGH",
+      "hasDividend": false,
+      "unlockLevel": 3
+    },
+    {
+      "symbol": "SPRT",
+      "name": "スポーツ関連",
+      "category": "ENTERTAINMENT",
+      "description": "スポーツ用品・施設運営企業",
+      "volatility": "MEDIUM",
+      "hasDividend": true,
+      "unlockLevel": 3
+    }
+  ]
+}

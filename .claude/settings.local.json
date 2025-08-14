@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell:*)",
+      "Bash(.gradlew assembleDebug)",
+      "Bash(gradlew.bat assembleDebug:*)",
+      "Bash(cmd:*)",
+      "Bash(export:*)",
+      "Bash(.gradlew assembleDebug --stacktrace)",
+      "Bash(PATH=\"/c/Program Files/Android/Android Studio/jbr/bin:$PATH\" ./gradlew.bat assembleDebug --stacktrace)",
+      "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew assembleDebug --stacktrace)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
