@@ -157,6 +157,11 @@ fun GameScreen() {
     var totalAssets by remember { mutableStateOf(currentCash + stockValue) }
     var profitRate by remember { mutableStateOf(0.0) }
     
+    // 時間管理（9:00〜17:00の取引時間）
+    var currentHour by remember { mutableStateOf(9) }
+    var currentMinute by remember { mutableStateOf(0) }
+    var isMarketOpen by remember { mutableStateOf(true) }
+    
     // 株式データの管理
     var stockList by remember { mutableStateOf(generateInitialStocks()) }
     var holdings by remember { mutableStateOf(mutableMapOf<String, Int>()) }
@@ -165,22 +170,63 @@ fun GameScreen() {
     var hasError by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("") }
     
-    // 自動株価変動（5秒ごと）
+    // 時間経過とマーケット管理（3秒ごとに15分進む）
     LaunchedEffect(gameDay) {
         while (true) {
-            kotlinx.coroutines.delay(5000) // 5秒待機（より頻繁に更新）
+            kotlinx.coroutines.delay(3000) // 3秒待機
             
-            // 即座に全ての状態を更新
-            val newStockList = updateStockPrices(stockList)
-            val newStockValue = calculateStockValue(holdings, newStockList)
-            val newTotalAssets = currentCash + newStockValue
-            val newProfitRate = ((newTotalAssets - 1000000.0) / 1000000.0) * 100
+            // 時間を15分進める
+            val newMinute = currentMinute + 15
+            val newHour = if (newMinute >= 60) currentHour + 1 else currentHour
+            val finalMinute = newMinute % 60
             
-            // 状態を一括更新
-            stockList = newStockList
-            stockValue = newStockValue
-            totalAssets = newTotalAssets
-            profitRate = newProfitRate
+            // 取引時間チェック（9:00〜17:00）
+            val newIsMarketOpen = newHour in 9..16
+            
+            // 一日が終了したら次の日へ
+            if (newHour >= 17) {
+                // 日次処理
+                val endOfDayStockList = simulateDailyMarketChange(stockList)
+                val endOfDayStockValue = calculateStockValue(holdings, endOfDayStockList)
+                val endOfDayTotalAssets = currentCash + endOfDayStockValue
+                val endOfDayProfitRate = ((endOfDayTotalAssets - 1000000.0) / 1000000.0) * 100
+                
+                // 次の日の開始（9:00にリセット）
+                if (gameDay < 30) {
+                    gameDay += 1
+                    currentHour = 9
+                    currentMinute = 0
+                    isMarketOpen = true
+                    stockList = endOfDayStockList
+                    stockValue = endOfDayStockValue
+                    totalAssets = endOfDayTotalAssets
+                    profitRate = endOfDayProfitRate
+                } else {
+                    // ゲーム終了
+                    currentHour = 17
+                    currentMinute = 0
+                    isMarketOpen = false
+                }
+            } else {
+                // 通常の時間進行
+                currentHour = newHour
+                currentMinute = finalMinute
+                isMarketOpen = newIsMarketOpen
+                
+                // 取引時間中のみ株価変動
+                if (isMarketOpen) {
+                    val newStockList = updateStockPrices(stockList)
+                    val newStockValue = calculateStockValue(holdings, newStockList)
+                    val newTotalAssets = currentCash + newStockValue
+                    val newProfitRate = ((newTotalAssets - 1000000.0) / 1000000.0) * 100
+                    
+                    // 状態を一括更新
+                    stockList = newStockList
+                    stockValue = newStockValue
+                    totalAssets = newTotalAssets
+                    profitRate = newProfitRate
+                }
+            }
         }
     }
     
@@ -204,13 +250,15 @@ fun GameScreen() {
         // ヘッダー：ゲーム情報
         GameHeaderCard(
             gameDay = gameDay,
+            currentTime = "${String.format("%02d", currentHour)}:${String.format("%02d", currentMinute)}",
+            isMarketOpen = isMarketOpen,
             totalAssets = totalAssets,
             currentCash = currentCash,
             stockValue = stockValue,
             profitRate = profitRate,
             onNextDay = { 
                 if (gameDay < 30) {
-                    // 即座に全ての状態を更新
+                    // 次の日へスキップ（時間を17:00にセット）
                     val newGameDay = gameDay + 1
                     val newStockList = simulateDailyMarketChange(stockList)
                     val newStockValue = calculateStockValue(holdings, newStockList)
@@ -219,6 +267,9 @@ fun GameScreen() {
                     
                     // 状態を一括更新
                     gameDay = newGameDay
+                    currentHour = 9
+                    currentMinute = 0
+                    isMarketOpen = true
                     stockList = newStockList
                     stockValue = newStockValue
                     totalAssets = newTotalAssets
@@ -253,13 +304,16 @@ fun GameScreen() {
             0 -> StockListTab(
                 stockList = stockList,
                 holdings = holdings,
-                onBuyStock = { symbol ->
+                currentCash = currentCash,
+                isMarketOpen = isMarketOpen,
+                onBuyStock = { symbol, shares ->
                     val stock = stockList.find { it.symbol == symbol }
-                    if (stock != null && currentCash >= stock.price) {
+                    val totalCost = if (stock != null) stock.price * shares else 0
+                    if (stock != null && currentCash >= totalCost) {
                         // 即座に全ての状態を更新
-                        val newCash = currentCash - stock.price
+                        val newCash = currentCash - totalCost
                         val newHoldings = holdings.toMutableMap().apply {
-                            this[symbol] = (this[symbol] ?: 0) + 1
+                            this[symbol] = (this[symbol] ?: 0) + shares
                         }
                         val newStockValue = calculateStockValue(newHoldings, stockList)
                         val newTotalAssets = newCash + newStockValue
@@ -275,17 +329,18 @@ fun GameScreen() {
                         // ポップアップメッセージは表示しない
                     } else {
                         hasError = true
-                        statusMessage = "現金が不足しています"
+                        statusMessage = "現金が不足しています（必要額: ${String.format("%,d", totalCost)}円）"
                     }
                 },
-                onSellStock = { symbol ->
+                onSellStock = { symbol, shares ->
                     val holdingShares = holdings[symbol] ?: 0
                     val stock = stockList.find { it.symbol == symbol }
-                    if (holdingShares > 0 && stock != null) {
+                    if (holdingShares >= shares && stock != null && shares > 0) {
                         // 即座に全ての状態を更新
-                        val newCash = currentCash + stock.price
+                        val totalRevenue = stock.price * shares
+                        val newCash = currentCash + totalRevenue
                         val newHoldings = holdings.toMutableMap().apply {
-                            val newShares = holdingShares - 1
+                            val newShares = holdingShares - shares
                             if (newShares <= 0) {
                                 remove(symbol)
                             } else {
@@ -306,7 +361,7 @@ fun GameScreen() {
                         // ポップアップメッセージは表示しない
                     } else {
                         hasError = true
-                        statusMessage = "売却する株式がありません"
+                        statusMessage = "売却する株式が不足しています（保有: ${holdingShares}株, 要求: ${shares}株）"
                     }
                 }
             )
@@ -349,6 +404,8 @@ fun GameScreen() {
 @Composable
 fun GameHeaderCard(
     gameDay: Int,
+    currentTime: String,
+    isMarketOpen: Boolean,
     totalAssets: Int,
     currentCash: Int,
     stockValue: Int,
@@ -372,10 +429,35 @@ fun GameHeaderCard(
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${gameDay}日目 / 30日",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = currentTime,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // マーケット状態表示
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val marketStatusColor = if (isMarketOpen) Color(0xFF4CAF50) else Color(0xFFF44336)
+                val marketStatusText = if (isMarketOpen) "🔔 マーケット オープン" else "🔒 マーケット クローズ"
                 Text(
-                    text = "${gameDay}日目 / 30日",
+                    text = marketStatusText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Bold,
+                    color = marketStatusColor
                 )
             }
             
@@ -454,8 +536,10 @@ fun GameHeaderCard(
 fun StockListTab(
     stockList: List<MockStock>,
     holdings: Map<String, Int>,
-    onBuyStock: (String) -> Unit,
-    onSellStock: (String) -> Unit
+    currentCash: Int,
+    isMarketOpen: Boolean,
+    onBuyStock: (String, Int) -> Unit,
+    onSellStock: (String, Int) -> Unit
 ) {
     LazyColumn {
         items(stockList) { stock ->
@@ -463,8 +547,10 @@ fun StockListTab(
             InteractiveStockCard(
                 stock = stock,
                 holdingShares = holdingShares,
-                onBuyClick = { onBuyStock(stock.symbol) },
-                onSellClick = { onSellStock(stock.symbol) }
+                currentCash = currentCash,
+                isMarketOpen = isMarketOpen,
+                onBuyClick = { shares -> onBuyStock(stock.symbol, shares) },
+                onSellClick = { shares -> onSellStock(stock.symbol, shares) }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -539,8 +625,10 @@ fun NewsTab() {
 fun InteractiveStockCard(
     stock: MockStock,
     holdingShares: Int,
-    onBuyClick: () -> Unit,
-    onSellClick: () -> Unit
+    currentCash: Int,
+    isMarketOpen: Boolean,
+    onBuyClick: (Int) -> Unit,
+    onSellClick: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -600,30 +688,110 @@ fun InteractiveStockCard(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // 売買ボタン
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = onBuyClick,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
-                    )
+            // 購入ボタン（複数の数量選択）
+            Column {
+                Text(
+                    text = "購入",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("買う", color = Color.White)
+                    Button(
+                        onClick = { onBuyClick(1) },
+                        enabled = isMarketOpen && currentCash >= stock.price,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text("1株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = { onBuyClick(100) },
+                        enabled = isMarketOpen && currentCash >= stock.price * 100,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text("100株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = { onBuyClick(1000) },
+                        enabled = isMarketOpen && currentCash >= stock.price * 1000,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text("1000株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 
-                Button(
-                    onClick = onSellClick,
-                    enabled = holdingShares > 0,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF44336)
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 売却ボタン（複数の数量選択）
+                Text(
+                    text = "売却",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("売る", color = Color.White)
+                    Button(
+                        onClick = { onSellClick(1) },
+                        enabled = isMarketOpen && holdingShares > 0,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336)
+                        )
+                    ) {
+                        Text("1株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = { onSellClick(100) },
+                        enabled = isMarketOpen && holdingShares >= 100,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336)
+                        )
+                    ) {
+                        Text("100株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = { onSellClick(1000) },
+                        enabled = isMarketOpen && holdingShares >= 1000,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336)
+                        )
+                    ) {
+                        Text("1000株", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                
+                // 全売却ボタン
+                if (holdingShares > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = { onSellClick(holdingShares) },
+                        enabled = isMarketOpen,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF5722)
+                        )
+                    ) {
+                        Text("全売却 (${holdingShares}株)", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
