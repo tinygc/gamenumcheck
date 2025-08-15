@@ -9,7 +9,15 @@
       "Bash(.gradlew assembleDebug --stacktrace)",
       "Bash(PATH=\"/c/Program Files/Android/Android Studio/jbr/bin:$PATH\" ./gradlew.bat assembleDebug --stacktrace)",
       "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew assembleDebug --stacktrace)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(adb:*)",
+      "Bash(where adb)",
+      "Bash(dir \"C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\")",
+      "Bash(.gradlew.bat assembleDebug)",
+      "Bash(.gradlew.bat clean)",
+      "Bash(./gradlew.bat:*)",
+      "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew.bat assembleDebug)"
     ],
     "deny": [],
     "ask": []
