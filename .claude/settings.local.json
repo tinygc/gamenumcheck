@@ -17,7 +17,8 @@
       "Bash(.gradlew.bat assembleDebug)",
       "Bash(.gradlew.bat clean)",
       "Bash(./gradlew.bat:*)",
-      "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew.bat assembleDebug)"
+      "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew.bat assembleDebug)",
+      "Bash(PATH=\"C:\\Program Files\\Android\\Android Studio\\jbr\\bin:$PATH\" ./gradlew.bat assembleDebug --stacktrace)"
     ],
     "deny": [],
     "ask": []
